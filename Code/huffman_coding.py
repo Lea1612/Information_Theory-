@@ -6,147 +6,207 @@ from struct import pack
 from heap_node import HeapNode
 
 
-
 class HuffmanCoding:
 	def __init__(self, file_extension_encode, file_extension_decode):
 		self.file_extension_encode = file_extension_encode
 		self.file_extension_decode = file_extension_decode
 		self.heap = []
 		self.codes = {}
-		self.reverse_mapping = {}
+		self.map_reverse = {}
 
-	def make_frequency_dict(self, text):
+
+	def frequency_dictionary(self, text):
+
+		#Huffman coding is based on frequencies of each caracter
+		#We create a dictionary containing them.
+
 		frequency = {}
-		for i in text:
-			if i not in frequency:
-				frequency[i] = 0
-			frequency[i] += 1
+		for ch in text:
+			if ch not in frequency:
+				frequency[ch] = 0
+			frequency[ch] += 1
 
 		return frequency
+		
 
-	def make_heap(self, frequency):
+	def heap_creation(self, frequency):
+
+		#We use our class HeapNode to create the binary tree
+
 		for key in frequency:
 			node = HeapNode(key, frequency[key])
-			heapq.heappush(self.heap, node)
+			heapq.heappush(self.heap, node) #Push the value of the node onto the heap, maintaining the heap invariant
 
-	def merge_nodes(self):
+
+	def trees_merge(self):
+
+		# We pick the 2 trees with the smallest frequency 
+		# Combine them into a new tree with a new parent node with the frequency of both of its children 
+		# Until you have no more trees to merge
+
 		while(len(self.heap) > 1):
-			node1 = heapq.heappop(self.heap)
+			node1 = heapq.heappop(self.heap) #Pop and return the smallest item from the heap, maintaining the heap invariant
 			node2 = heapq.heappop(self.heap)
 
-			merged = HeapNode(None, node1.freq + node2.freq)
-			merged.left = node1
-			merged.right = node2
+			tree_merged = HeapNode(None, node1.frequency + node2.frequency)
+			tree_merged.left = node1
+			tree_merged.right = node2
 
-			heapq.heappush(self.heap, merged)
+			heapq.heappush(self.heap, tree_merged)
 
-	def make_codes_helper(self, root, current_code):
+
+	def codes_symbol_creation(self, root, current_code):
+
+		# We need code for every symbol starting at the root node
+		# For each left arc, add a 0 to the end of the code
+		# for each right arc, add a 1 to the end of the code
+
 		if(root == None):
 			return
 
-		if(root.char != None):
-			self.codes[root.char] = current_code
-			self.reverse_mapping[current_code] = root.char
+		if(root.character != None):
+			self.codes[root.character] = current_code
+			self.map_reverse[current_code] = root.character
 			return
 
-		self.make_codes_helper(root.left, current_code + "0")
-		self.make_codes_helper(root.right, current_code + "1")
+		self.codes_symbol_creation(root.left, current_code + "0")
+		self.codes_symbol_creation(root.right, current_code + "1")
 
-	def make_codes(self):
+	def codes_of_symbols(self):
 		root = heapq.heappop(self.heap)
 		current_code = ""
-		self.make_codes_helper(root, current_code)
+		self.codes_symbol_creation(root, current_code)
 
-	def get_encoded_text(self, text):
-		encoded_text = []
-		for character in text:
-			encoded_text.append(self.codes[character])
-		return ''.join(encoded_text)
 
-	def pad_encoded_text(self, encoded_text):
-		extra_padding = 8 - len(encoded_text) % 8
-		for i in range(extra_padding):
+	def pad_bits(self, encoded_text):
+
+		# If reaching the end of the file and have not accummulated 8 bits for printing
+		# We need to pad the accummulated bits with enough 0's 
+
+		pad_with_zeros = 8 - len(encoded_text) % 8
+		for i in range(pad_with_zeros):
 			encoded_text += "0"
 
-		padded_info = "{0:08b}".format(extra_padding)
-		encoded_text = padded_info + encoded_text
+		padded = "{0:08b}".format(pad_with_zeros)
+		encoded_text = padded + encoded_text
 		return encoded_text
+
 
 	def get_byte_array(self, padded_encoded_text):
-		if(len(padded_encoded_text) % 8 != 0):
-			print("Encoded text not padded properly")
-			exit(0)
 
-		b = bytearray()
+		# Output binary file
+
+		byte_array = bytearray()
 		for i in range(0, len(padded_encoded_text), 8):
 			byte = padded_encoded_text[i:i+8]
-			b.append(int(byte, 2))
-		return b
+			byte_array.append(int(byte, 2))
+		return byte_array
 
-	def remove_padding(self, padded_encoded_text):
-		padded_info = padded_encoded_text[:8]
-		extra_padding = int(padded_info, 2)
-
-		padded_encoded_text = padded_encoded_text[8:]
-		encoded_text = padded_encoded_text[:-1*extra_padding]
-
-		return encoded_text
-
-	def decode_text(self, encoded_text):
-		current_code = ""
-		decoded_text = []
-
-		for bit in encoded_text:
-			current_code += bit
-			if(current_code in self.reverse_mapping):
-				character = self.reverse_mapping[current_code]
-
-				decoded_text.append(chr(character))
-				current_code = ""
-
-		return "".join(decoded_text)
+	#Compression 
 
 	def encode(self, file_input_path, file_output_path):
 		filename, file_extension = os.path.splitext(file_input_path)
 
 		with open(file_input_path, 'rb') as file, open(file_output_path, 'wb') as output:
+
 			print(datetime.now(), ": Start huffman")
+
 			text = file.read()
 			text = text.rstrip()
+
 			print(datetime.now(), ": Create frequency")
-			frequency = self.make_frequency_dict(text)
-			self.make_heap(frequency)
-			self.merge_nodes()
-			self.make_codes()
+
+			frequency = self.frequency_dictionary(text)
+			self.heap_creation(frequency)
+			self.trees_merge()
+			self.codes_of_symbols()
+
 			print(datetime.now(), ": Start encode")
-			encoded_text = self.get_encoded_text(text)
+
+			encoded_text = []
+			for character in text:
+				encoded_text.append(self.codes[character])
+			encoded_text = ''.join(encoded_text)
+
 			print(datetime.now(), ": Padding encoded")
-			padded_encoded_text = self.pad_encoded_text(encoded_text)
+
+			padded_encoded_text = self.pad_bits(encoded_text)
+
 			print(datetime.now(), ": Get byte array")
-			b = self.get_byte_array(padded_encoded_text)
+
+			byte_array = self.get_byte_array(padded_encoded_text)
+
 			print(datetime.now(), ": Write file")
-			output.write(bytes(b))
-			print(datetime.now(), ": Finish huffman")
+
+			output.write(bytes(byte_array))
+
+			print(datetime.now(), ": Finish huffman")	
+
+	#Starting decompression
+
+
+	def padding_delete(self, padded_encoded_text):
+
+		# To decode properly, we need to remove the padding added in the compression
+
+		padded = padded_encoded_text[:8]
+		pad_with_zeros = int(padded, 2)
+
+		padded_encoded_text = padded_encoded_text[8:]
+		encoded_text = padded_encoded_text[:-1*pad_with_zeros]
+
+		return encoded_text
+ 
+	
+	def decode_text(self, encoded_text):
+
+		# Read bit by bit from the compressed text 
+		
+		code = ""
+		decoded_text = []
+
+		for bit in encoded_text:
+			code += bit
+			if(code in self.map_reverse):
+				character = self.map_reverse[code]
+
+				decoded_text.append(chr(character))
+				code = ""
+
+		return "".join(decoded_text)
+
+	# Decompression
+	# Use the read bit to traverse the Huffman coding tree (0 for left and 1 for right), starting from the root node
 
 	def decode(self, file_input_path, file_output_path):
 		filename, file_extension = os.path.splitext(file_input_path)
+
 		print(datetime.now(), ": Start decode huffman")
+
 		with open(file_input_path, 'rb') as file, open(file_output_path, 'wb') as output:
-			bit_lst = []
+			list_bits = []
+
 			print(datetime.now(), ": Read file")
-			byte = file.read(1)
-			while len(byte) > 0:
-				byte = ord(byte)
-				bits = bin(byte)[2:].rjust(8, '0')
-				bit_lst.append(bits)
-				byte = file.read(1)
-			bit_string = ''.join(bit_lst)
+
+			byte_file = file.read(1)
+			while len(byte_file) > 0:
+				byte_file = ord(byte_file)
+				bits = bin(byte_file)[2:].rjust(8, '0')
+				list_bits.append(bits)
+				byte_file = file.read(1)
+			bit_string = ''.join(list_bits)
+
 			print(datetime.now(), ": Remove padding")
-			encoded_text = self.remove_padding(bit_string)
+
+			encoded_text = self.padding_delete(bit_string)
+
 			print(datetime.now(), ": Decoding")
+
 			decompressed_text = self.decode_text(encoded_text)
 
 			print(datetime.now(), ": Writing decoded")
-			for data in decompressed_text:
-				output.write(pack('B', ord(data)))
+
+			for element in decompressed_text:
+				output.write(pack('B', ord(element)))
+
 			print(datetime.now(), ": Finish huffman")

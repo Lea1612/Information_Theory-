@@ -6,9 +6,9 @@ To run the code, you need to download the files into one folder.
 In the file 'code', you only need to run 'main.py'.
 
 In the file 'Output', you'll get :
-'encode_0.txt' - The first encoding (with LZW)
-'encode_1.bin' - The second encoding (with Huffman)
+'encode_0.bin' - The first encoding (with LZW)
+'encode_1.zip' - The second encoding (with Huffman)
 'decode_0.bin' - The first decoding (with Huffman)
-'decode_1.bin' - The last decoding (which is the file itself)
+'decode_1.txt' - The last decoding (which is the file itself)
 
 

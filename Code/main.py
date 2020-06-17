@@ -28,8 +28,8 @@ class CompressionManager(object):
 
 def main():
     compression_manager = CompressionManager('./Input/dickens.txt')
-    compression_manager.add_compression(LZWAlgorithm(file_extension_encode='txt', file_extension_decode='txt'))
-    compression_manager.add_compression(HuffmanCoding(file_extension_encode='bin', file_extension_decode='bin'))
+    compression_manager.add_compression(LZWAlgorithm(file_extension_encode='bin', file_extension_decode='txt'))
+    compression_manager.add_compression(HuffmanCoding(file_extension_encode='zip', file_extension_decode='bin'))
     compression_manager.run()
 
 if __name__ == "__main__":
